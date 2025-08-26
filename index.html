@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Budget Tracker</title>
+  <style>
+    :root{ --dark:#343131; --red:#A04747; --gold:#D8A25E; --yellow:#EEDF7A; --ink:#1d1b1b; }
+    *{ box-sizing:border-box }
+    body{
+      margin:0; height:100vh; display:flex; align-items:center; justify-content:center;
+      font-family:Poppins,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:var(--dark);
+    }
+    .container{
+      width:min(420px, 94vw); background:#fff; padding:28px; border-radius:16px;
+      box-shadow:0 10px 25px rgba(0,0,0,.32); overflow:hidden; position:relative;
+      animation:pop .5s ease;
+    }
+    @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+    .tabs{ display:flex; gap:8px; margin-bottom:18px }
+    .tab{
+      flex:1; text-align:center; padding:12px; background:var(--gold); color:#fff; font-weight:700;
+      border-radius:10px; cursor:pointer; transition:.25s;
+    }
+    .tab.active{ background:var(--red) }
+    form{ display:none; animation:fadeIn .35s ease }
+    form.active{ display:block }
+    @keyframes fadeIn{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+    input{
+      width:100%; padding:12px; margin:8px 0 14px; border:2px solid var(--gold); border-radius:10px;
+      font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s;
+      background:#fffdf7;
+    }
+    input:focus{ border-color:var(--red); box-shadow:0 0 0 4px rgba(160,71,71,.12) }
+    .btn{
+      width:100%; padding:12px; border:none; border-radius:10px; background:var(--red); color:#fff;
+      font-weight:800; letter-spacing:.3px; cursor:pointer; transition:.2s; box-shadow:0 8px 18px rgba(160,71,71,.25);
+    }
+    .btn:hover{ background:#8f3e3e }
+    .strength{ font-size:13px; font-weight:700; margin:6px 0 10px; min-height:1.2em }
+    .easy{ color:var(--red) } .medium{ color:#d18512 } .strong{ color:#17834e }
+    .meter{ height:8px; background:#eee4cc; border-radius:999px; overflow:hidden; margin-top:4px }
+    .meter > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,#d66,#ffc45a,#27ae60); transition:width .3s ease }
+    .msg{ display:none; margin-top:10px; padding:10px; border-radius:10px; font-size:.92rem; background:#fff7d6; color:#4a3c05; border:1px solid #e6cd7a }
+    .msg.error{ background:#ffe2e2; color:#611a1a; border-color:#f0b3b3 }
+    .msg.show{ display:block }
+    .shake{ animation:shake .35s ease }
+    @keyframes shake{ 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+    .welcome{
+      display:none; text-align:center; margin-top:8px; padding:10px 12px; border:1px dashed var(--gold); border-radius:10px; background:#fffdf2;
+    }
+    .logout{ margin-top:8px; background:#D8A25E; color:#1d1b1b }
+
+    .header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+  color: var(--red);
+  margin: 0;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- New Header -->
+    <div class="header">
+      <h1>💰 Budget Tracker</h1>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="login">Login</div>
+      <div class="tab" data-tab="signup">Signup</div>
+    </div>
+
+
+    <!-- Login -->
+    <form id="login" class="active" autocomplete="on">
+      <input id="login-username" type="text" placeholder="Username" required>
+      <input id="login-pass" type="password" placeholder="Password" required>
+      <div class="meter"><i id="login-meter"></i></div>
+      <div class="strength" id="login-strength"></div>
+      <button class="btn" type="submit">Login</button>
+      <div id="login-msg" class="msg" role="alert"></div>
+    </form>
+
+    <!-- Signup -->
+    <form id="signup" autocomplete="off">
+      <input id="full-name" type="text" placeholder="Full Name" required>
+      <input id="signup-username" type="text" placeholder="Username" required>
+      <input id="signup-pass" type="password" placeholder="Password" required>
+      <div class="meter"><i id="signup-meter"></i></div>
+      <div class="strength" id="signup-strength"></div>
+      <button class="btn" type="submit">Signup</button>
+      <div id="signup-msg" class="msg" role="alert"></div>
+    </form>
+
+    <div id="welcome" class="welcome">
+      <div id="welcome-text"></div>
+      <button id="logout" class="btn logout" type="button">Log out</button>
+    </div>
+  </div>
+
+  <script>
+    // ------ Tabs ------
+    const tabs = document.querySelectorAll('.tab');
+    const loginForm = document.getElementById('login');
+    const signupForm = document.getElementById('signup');
+    function setTab(id){
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+      loginForm.classList.toggle('active', id === 'login');
+      signupForm.classList.toggle('active', id === 'signup');
+    }
+    tabs.forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+
+    // ------ Strength Meter ------
+    const strengthText = (pw)=>{
+      let score=0;
+      if (pw.length>=6) score++;
+      if (pw.length>=10) score++;
+      if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+      if (/\d/.test(pw)) score++;
+      if (/[^A-Za-z0-9]/.test(pw)) score++;
+      if (score<=2) return {label:'Easy ❌', pct:33, cls:'easy'};
+      if (score===3) return {label:'Medium ⚠️', pct:66, cls:'medium'};
+      return {label:'Strong ✔️', pct:100, cls:'strong'};
+    }
+    function bindMeter(inputId, barId, labelId){
+      const input = document.getElementById(inputId);
+      const bar = document.getElementById(barId);
+      const label = document.getElementById(labelId);
+      const update = ()=>{
+        const s = strengthText(input.value);
+        bar.style.width = s.pct + '%';
+        label.textContent = s.label;
+        label.className = 'strength ' + s.cls;
+      }
+      input.addEventListener('input', update);
+      update();
+    }
+    bindMeter('login-pass', 'login-meter', 'login-strength');
+    bindMeter('signup-pass', 'signup-meter', 'signup-strength');
+
+    // ------ API helper ------
+    async function api(path, data, method='POST'){
+      const res = await fetch('api/'+path, {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: method==='POST' ? JSON.stringify(data||{}) : undefined,
+        credentials: 'same-origin'
+      });
+      const json = await res.json().catch(()=>({error:'Invalid JSON'}));
+      if (!res.ok) throw new Error(json.error || 'Request failed');
+      return json;
+    }
+    function showMsg(el, text, isErr=false){
+      el.textContent = text;
+      el.classList.toggle('error', !!isErr);
+      el.classList.add('show');
+    }
+
+    // ------ Signup handler ------
+    signupForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const full_name = document.getElementById('full-name').value.trim();
+      const username = document.getElementById('signup-username').value.trim();
+      const password = document.getElementById('signup-pass').value;
+      const msg = document.getElementById('signup-msg');
+      msg.className = 'msg';
+
+      try{
+        const s = strengthText(password);
+        if (s.cls==='easy') throw new Error('Password is too weak. Make it Medium or Strong.');
+        const res = await api('signup.php', {full_name, username, password});
+        showMsg(msg, res.message || 'Account created ✔️');
+        // Switch to login and prefill username
+        setTimeout(()=>{ window.location.href = 'dashboard.php'; }, 800);
+      }catch(err){
+        showMsg(msg, err.message, true);
+      }
+    });
+
+    // ------ Login handler ------
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-pass').value;
+      const msg = document.getElementById('login-msg');
+      msg.className = 'msg';
+
+      try{
+        const res = await api('login.php', {username, password});
+        window.location.href = 'dashboard.php';
+
+      }catch(err){
+        showMsg(msg, err.message, true);
+        loginForm.classList.remove('shake');
+        requestAnimationFrame(()=>loginForm.classList.add('shake'));
+      }
+    });
+
+    // ------ Session helpers ------
+    const welcome = document.getElementById('welcome');
+    const welcomeText = document.getElementById('welcome-text');
+    function showWelcome(user){
+      welcomeText.textContent = `Welcome, ${user.full_name} (@${user.username})`;
+      welcome.style.display = 'block';
+    }
+    document.getElementById('logout').addEventListener('click', async ()=>{
+      await api('logout.php', {}, 'POST');
+      welcome.style.display = 'none';
+      document.getElementById('login-msg').className = 'msg';
+      showMsg(document.getElementById('login-msg'), 'Logged out.', false);
+    });
+
+    // On load, try to restore session
+    (async ()=>{
+      try{
+        const res = await api('me.php', {}, 'POST');
+        if (res.ok) showWelcome(res.user);
+      }catch{}
+    })();
+  </script>
+</body>
+</html>
